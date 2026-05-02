@@ -1,0 +1,23 @@
+{
+  "version": 2,
+  "name": "vision-ai",
+  "buildCommand": "",
+  "outputDirectory": "public",
+  "routes": [
+    { "src": "/api/(.*)", "dest": "/api/$1" },
+    { "src": "/(.*)", "dest": "/index.html" }
+  ],
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "https://visionedu.online" },
+        { "key": "Access-Control-Allow-Origin", "value": "https://ai.visionedu.online" }
+      ]
+    }
+  ],
+  "env": {
+    "GOOGLE_SEARCH_API_KEY": "@google_search_api_key",
+    "GOOGLE_SEARCH_CX": "@google_search_cx"
+  }
+}

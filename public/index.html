@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vision AI — WASSCE Intelligence Engine</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:          #0a0a0f;
+      --bg-card:     #111118;
+      --bg-input:    #16161f;
+      --border:      rgba(255,255,255,0.07);
+      --primary:     #7c3aed;
+      --primary-glow:rgba(124,58,237,0.25);
+      --accent:      #06b6d4;
+      --text:        #e2e8f0;
+      --text-muted:  #64748b;
+      --user-bubble: #1e1b4b;
+      --ai-bubble:   #111118;
+      --success:     #10b981;
+      --warning:     #f59e0b;
+      --radius:      16px;
+      --font:        'Inter', sans-serif;
+      --mono:        'JetBrains Mono', monospace;
+    }
+
+    html, body { height: 100%; overflow: hidden; background: var(--bg); font-family: var(--font); color: var(--text); }
+
+    /* ── Layout ─────────────────────────────────────────────────── */
+    .app { display: flex; flex-direction: column; height: 100vh; max-width: 900px; margin: 0 auto; padding: 0 16px; }
+
+    /* ── Header ─────────────────────────────────────────────────── */
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 18px 0 14px; border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .logo {
+      display: flex; align-items: center; gap: 12px;
+    }
+    .logo-icon {
+      width: 38px; height: 38px;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 1.1rem; color: #fff;
+      box-shadow: 0 0 20px var(--primary-glow);
+    }
+    .logo-text { font-size: 1.1rem; font-weight: 700; letter-spacing: -0.02em; }
+    .logo-text span { color: var(--primary); }
+    .status-chip {
+      display: flex; align-items: center; gap: 6px;
+      background: rgba(16,185,129,0.1);
+      border: 1px solid rgba(16,185,129,0.2);
+      border-radius: 20px; padding: 4px 12px;
+      font-size: 0.72rem; font-weight: 600; color: var(--success);
+    }
+    .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+    /* ── Subject Pills ───────────────────────────────────────────── */
+    .subject-bar {
+      display: flex; gap: 8px; overflow-x: auto; padding: 14px 0 10px;
+      flex-shrink: 0; scrollbar-width: none;
+    }
+    .subject-bar::-webkit-scrollbar { display: none; }
+    .subject-pill {
+      display: flex; align-items: center; gap: 6px;
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 20px; padding: 5px 14px;
+      font-size: 0.75rem; font-weight: 600; color: var(--text-muted);
+      white-space: nowrap; cursor: pointer;
+      transition: all 0.2s;
+    }
+    .subject-pill:hover, .subject-pill.active {
+      border-color: var(--primary);
+      color: var(--primary);
+      background: rgba(124,58,237,0.08);
+    }
+
+    /* ── Chat Window ─────────────────────────────────────────────── */
+    .chat-window {
+      flex: 1; overflow-y: auto; padding: 20px 0;
+      scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+    }
+    .chat-window::-webkit-scrollbar { width: 4px; }
+    .chat-window::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    /* ── Empty State ─────────────────────────────────────────────── */
+    .empty-state {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      height: 100%; gap: 24px; text-align: center; padding: 40px;
+    }
+    .empty-icon {
+      width: 72px; height: 72px;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      border-radius: 20px; display: flex; align-items: center; justify-content: center;
+      font-size: 2rem; box-shadow: 0 0 40px var(--primary-glow);
+      animation: float 3s ease-in-out infinite;
+    }
+    @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
+    .empty-title { font-size: 1.5rem; font-weight: 700; }
+    .empty-sub { color: var(--text-muted); font-size: 0.9rem; max-width: 400px; line-height: 1.6; }
+    .suggestion-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; max-width: 520px; }
+    .suggestion-card {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 12px; padding: 14px 16px;
+      font-size: 0.82rem; color: var(--text-muted);
+      cursor: pointer; text-align: left; transition: all 0.2s;
+    }
+    .suggestion-card:hover { border-color: var(--primary); color: var(--text); background: rgba(124,58,237,0.06); }
+    .suggestion-card strong { color: var(--text); display: block; margin-bottom: 4px; font-size: 0.85rem; }
+
+    /* ── Messages ────────────────────────────────────────────────── */
+    .message { display: flex; gap: 12px; margin-bottom: 20px; animation: msgIn 0.3s ease; }
+    @keyframes msgIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+    .message.user { flex-direction: row-reverse; }
+
+    .avatar {
+      width: 36px; height: 36px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.8rem; font-weight: 700; flex-shrink: 0;
+    }
+    .avatar.ai { background: linear-gradient(135deg, var(--primary), var(--accent)); color: #fff; }
+    .avatar.user { background: var(--user-bubble); color: var(--primary); border: 1px solid rgba(124,58,237,0.3); }
+
+    .bubble {
+      max-width: 75%; padding: 14px 18px; border-radius: var(--radius);
+      font-size: 0.9rem; line-height: 1.7;
+    }
+    .message.user .bubble {
+      background: var(--user-bubble); border: 1px solid rgba(124,58,237,0.2);
+      border-top-right-radius: 4px; color: #c4b5fd;
+    }
+    .message.ai .bubble {
+      background: var(--ai-bubble); border: 1px solid var(--border);
+      border-top-left-radius: 4px;
+    }
+
+    /* Markdown-like formatting */
+    .bubble strong { font-weight: 700; color: #f0f0f0; }
+    .bubble em { font-style: italic; color: var(--accent); }
+    .bubble code {
+      font-family: var(--mono); font-size: 0.82rem;
+      background: rgba(255,255,255,0.06); padding: 2px 6px;
+      border-radius: 4px; color: #a78bfa;
+    }
+    .bubble pre {
+      background: #0d0d15; border: 1px solid var(--border);
+      border-radius: 10px; padding: 14px; overflow-x: auto;
+      font-family: var(--mono); font-size: 0.82rem; margin: 10px 0;
+    }
+    .bubble ul, .bubble ol { padding-left: 20px; margin: 8px 0; }
+    .bubble li { margin-bottom: 4px; }
+    .bubble a { color: var(--accent); text-decoration: none; }
+    .bubble a:hover { text-decoration: underline; }
+    .bubble hr { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
+
+    /* Source badge */
+    .source-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      margin-top: 10px; font-size: 0.7rem; font-weight: 600;
+      padding: 3px 10px; border-radius: 20px;
+    }
+    .source-badge.kb { background: rgba(124,58,237,0.12); color: var(--primary); }
+    .source-badge.web { background: rgba(6,182,212,0.12); color: var(--accent); }
+    .source-badge.math { background: rgba(245,158,11,0.12); color: var(--warning); }
+
+    /* Typing indicator */
+    .typing { display: flex; gap: 5px; align-items: center; padding: 14px 18px; }
+    .typing span {
+      width: 7px; height: 7px; border-radius: 50%; background: var(--text-muted);
+      animation: typing 1.2s infinite;
+    }
+    .typing span:nth-child(2) { animation-delay: 0.2s; }
+    .typing span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes typing { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-6px)} }
+
+    /* ── Input Area ──────────────────────────────────────────────── */
+    .input-area {
+      padding: 16px 0 20px; border-top: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .input-row {
+      display: flex; gap: 10px; align-items: flex-end;
+      background: var(--bg-input); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 10px 12px;
+      transition: border-color 0.2s;
+    }
+    .input-row:focus-within { border-color: rgba(124,58,237,0.5); }
+    #queryInput {
+      flex: 1; background: transparent; border: none; outline: none;
+      color: var(--text); font-family: var(--font); font-size: 0.92rem;
+      line-height: 1.5; resize: none; max-height: 140px; min-height: 24px;
+    }
+    #queryInput::placeholder { color: var(--text-muted); }
+    .send-btn {
+      width: 38px; height: 38px; border: none; border-radius: 10px;
+      background: var(--primary); color: #fff; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.2s; flex-shrink: 0;
+    }
+    .send-btn:hover:not(:disabled) { background: #6d28d9; transform: scale(1.05); }
+    .send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .input-hint { font-size: 0.7rem; color: var(--text-muted); margin-top: 6px; text-align: center; }
+
+    /* ── Responsive ──────────────────────────────────────────────── */
+    @media (max-width: 600px) {
+      .suggestion-grid { grid-template-columns: 1fr; }
+      .bubble { max-width: 90%; }
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Header -->
+  <header>
+    <div class="logo">
+      <div class="logo-icon">V</div>
+      <div class="logo-text">Vision <span>AI</span></div>
+    </div>
+    <div class="status-chip">
+      <div class="status-dot"></div>
+      Engine Online
+    </div>
+  </header>
+
+  <!-- Subject Bar -->
+  <div class="subject-bar">
+    <div class="subject-pill active" onclick="setSubject('')">✦ All</div>
+    <div class="subject-pill" onclick="setSubject('core mathematics')">📐 Core Maths</div>
+    <div class="subject-pill" onclick="setSubject('english language')">📝 English</div>
+    <div class="subject-pill" onclick="setSubject('integrated science')">🔬 Science</div>
+    <div class="subject-pill" onclick="setSubject('economics')">📊 Economics</div>
+    <div class="subject-pill" onclick="setSubject('social studies')">🌍 Social Studies</div>
+    <div class="subject-pill" onclick="setSubject('elective mathematics')">∫ Elective Maths</div>
+    <div class="subject-pill" onclick="setSubject('history')">🏛️ History</div>
+  </div>
+
+  <!-- Chat Window -->
+  <div class="chat-window" id="chatWindow">
+    <div class="empty-state" id="emptyState">
+      <div class="empty-icon">🧠</div>
+      <div class="empty-title">Vision AI</div>
+      <div class="empty-sub">Your WASSCE intelligence engine. Ask any exam question, math problem, or topic — I'll answer from my knowledge base or search the web.</div>
+      <div class="suggestion-grid">
+        <div class="suggestion-card" onclick="ask('What is the quadratic formula?')"><strong>📐 Quadratic Formula</strong>Explain the formula and when to use it</div>
+        <div class="suggestion-card" onclick="ask('Solve: 3x + 9 = 24')"><strong>🔢 Equation Solving</strong>Step-by-step algebra solution</div>
+        <div class="suggestion-card" onclick="ask('Explain photosynthesis for WASSCE')"><strong>🌱 Photosynthesis</strong>Full explanation with equation</div>
+        <div class="suggestion-card" onclick="ask('When did Ghana gain independence?')"><strong>🇬🇭 Ghana History</strong>Key dates and facts</div>
+        <div class="suggestion-card" onclick="ask('What are the laws of indices?')"><strong>⚡ Laws of Indices</strong>All rules with examples</div>
+        <div class="suggestion-card" onclick="ask('How to write a formal letter for WASSCE')"><strong>✉️ Formal Letter</strong>Format and structure</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Input Area -->
+  <div class="input-area">
+    <div class="input-row">
+      <textarea id="queryInput" rows="1" placeholder="Ask any WASSCE question, math problem, or topic..." onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+      <button class="send-btn" id="sendBtn" onclick="sendQuery()" title="Send">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M22 2L11 13"/><path d="M22 2L15 22 11 13 2 9l20-7z"/></svg>
+      </button>
+    </div>
+    <div class="input-hint">Built from scratch · BM25 Retrieval + Math Engine + Google Search</div>
+  </div>
+</div>
+
+<script>
+  const SESSION_ID = 'session_' + Math.random().toString(36).slice(2);
+  let subjectContext = '';
+  let isLoading = false;
+
+  function setSubject(subject) {
+    subjectContext = subject;
+    document.querySelectorAll('.subject-pill').forEach(p => p.classList.remove('active'));
+    event.target.classList.add('active');
+  }
+
+  function ask(text) {
+    document.getElementById('queryInput').value = text;
+    sendQuery();
+  }
+
+  function handleKey(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendQuery();
+    }
+  }
+
+  function autoResize(el) {
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 140) + 'px';
+  }
+
+  function hideEmpty() {
+    const empty = document.getElementById('emptyState');
+    if (empty) empty.remove();
+  }
+
+  function scrollToBottom() {
+    const cw = document.getElementById('chatWindow');
+    cw.scrollTop = cw.scrollHeight;
+  }
+
+  function appendMessage(role, html, source) {
+    hideEmpty();
+    const cw = document.getElementById('chatWindow');
+    const div = document.createElement('div');
+    div.className = `message ${role}`;
+    div.innerHTML = `
+      <div class="avatar ${role}">${role === 'ai' ? 'V' : 'Y'}</div>
+      <div class="bubble">
+        ${html}
+        ${source ? renderSourceBadge(source) : ''}
+      </div>
+    `;
+    cw.appendChild(div);
+    scrollToBottom();
+    return div;
+  }
+
+  function renderSourceBadge(source) {
+    const map = {
+      'knowledge-base': ['kb', '📚 Knowledge Base'],
+      'web-search':     ['web', '🔍 Web Search'],
+      'math-engine':    ['math', '🔢 Math Engine'],
+      'system':         ['kb', '🤖 Vision AI'],
+      'fallback':       ['kb', '💡 Vision AI'],
+    };
+    const [cls, label] = map[source] || ['kb', source];
+    return `<div class="source-badge ${cls}">${label}</div>`;
+  }
+
+  function showTyping() {
+    hideEmpty();
+    const cw = document.getElementById('chatWindow');
+    const div = document.createElement('div');
+    div.className = 'message ai';
+    div.id = 'typingIndicator';
+    div.innerHTML = `
+      <div class="avatar ai">V</div>
+      <div class="bubble">
+        <div class="typing"><span></span><span></span><span></span></div>
+      </div>`;
+    cw.appendChild(div);
+    scrollToBottom();
+  }
+
+  function removeTyping() {
+    document.getElementById('typingIndicator')?.remove();
+  }
+
+  /**
+   * Very lightweight Markdown → HTML renderer (built from scratch)
+   */
+  function renderMarkdown(text) {
+    return text
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.+?)\*/g, '<em>$1</em>')
+      .replace(/`(.+?)`/g, '<code>$1</code>')
+      .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
+      .replace(/^#{1,3}\s+(.+)$/gm, '<strong style="font-size:1.05em;display:block;margin:8px 0 4px">$1</strong>')
+      .replace(/^---$/gm, '<hr/>')
+      .replace(/^[-•]\s+(.+)$/gm, '<li>$1</li>')
+      .replace(/(<li>.*<\/li>)+/gs, '<ul>$&</ul>')
+      .replace(/\n\n/g, '</p><p style="margin-top:8px">')
+      .replace(/\n/g, '<br>');
+  }
+
+  async function sendQuery() {
+    if (isLoading) return;
+    const input = document.getElementById('queryInput');
+    const sendBtn = document.getElementById('sendBtn');
+    let query = input.value.trim();
+    if (!query) return;
+
+    // Prepend subject context if set
+    if (subjectContext) query = `[${subjectContext}] ${query}`;
+
+    // Show user message
+    appendMessage('user', renderMarkdown(input.value.trim()), null);
+    input.value = '';
+    input.style.height = 'auto';
+
+    // Show typing
+    isLoading = true;
+    sendBtn.disabled = true;
+    showTyping();
+
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query, sessionId: SESSION_ID }),
+      });
+
+      const data = await res.json();
+      removeTyping();
+
+      if (data.error) {
+        appendMessage('ai', `<span style="color:#f87171">Error: ${data.error}</span>`, null);
+      } else {
+        appendMessage('ai', renderMarkdown(data.answer), data.source);
+      }
+    } catch (err) {
+      removeTyping();
+      appendMessage('ai', '<span style="color:#f87171">Could not reach Vision AI server. Make sure the server is running.</span>', null);
+    } finally {
+      isLoading = false;
+      sendBtn.disabled = false;
+      input.focus();
+    }
+  }
+</script>
+</body>
+</html>

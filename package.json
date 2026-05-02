@@ -1,0 +1,16 @@
+{
+  "name": "vision-ai",
+  "version": "1.0.0",
+  "description": "Vision AI — WASSCE Intelligence Engine built from scratch",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
+    "express": "^4.18.3",
+    "node-fetch": "^2.7.0"
+  }
+}
