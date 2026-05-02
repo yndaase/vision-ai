@@ -1,14 +1,11 @@
 /**
- * Vision AI — Google Search Integration
- * Uses Google Custom Search JSON API.
- * Free tier: 100 queries/day.
+ * Vision AI — Wikipedia Search Integration
+ * 100% free, no API keys required. Perfect for academic factual fallback.
  */
 
-const SEARCH_API_BASE = 'https://www.googleapis.com/customsearch/v1';
-
 /**
- * Detect if a query likely needs a web search
- * (recent events, news, prices, unknowns not in knowledge base)
+ * Detect if a query likely needs a web/wiki search
+ * (facts, history, general knowledge outside the WASSCE KB)
  */
 function needsWebSearch(query, kbScore) {
   const q = query.toLowerCase();
@@ -16,50 +13,44 @@ function needsWebSearch(query, kbScore) {
   // Low KB confidence → always search
   if (kbScore < 0.1) return true;
 
-  // Temporal signals
-  const temporal = ['today', 'latest', 'current', 'recent', '2025', '2026', 'now',
-    'news', 'price', 'result', 'winner', 'election', 'update'];
-  if (temporal.some(t => q.includes(t))) return true;
-
-  // Specific factual queries likely not in WASSCE syllabus
+  // Specific factual queries
   const factual = ['who is', 'when did', 'where is', 'what is the capital',
-    'population of', 'president of', 'ceo of', 'founded by'];
+    'population of', 'president of', 'ceo of', 'founded by', 'history of'];
   if (factual.some(t => q.includes(t))) return true;
 
   return false;
 }
 
 /**
- * Perform a Google Custom Search query
+ * Perform a Wikipedia API search
  * @param {string} query
- * @param {string} apiKey  - GOOGLE_SEARCH_API_KEY
- * @param {string} cx      - GOOGLE_SEARCH_CX (Custom Search Engine ID)
  * @returns {{ title, snippet, link }[] | null}
  */
-async function googleSearch(query, apiKey, cx) {
-  if (!apiKey || !cx) return null;
-
+async function googleSearch(query) {
+  // We keep the function name 'googleSearch' so we don't have to rewrite ai-engine.js
   try {
-    const url = new URL(SEARCH_API_BASE);
-    url.searchParams.set('key', apiKey);
-    url.searchParams.set('cx', cx);
-    url.searchParams.set('q', query);
-    url.searchParams.set('num', '5');
-    url.searchParams.set('safe', 'active');
+    const url = new URL('https://en.wikipedia.org/w/api.php');
+    url.searchParams.set('action', 'query');
+    url.searchParams.set('list', 'search');
+    url.searchParams.set('srsearch', query);
+    url.searchParams.set('utf8', '1');
+    url.searchParams.set('format', 'json');
+    url.searchParams.set('origin', '*'); // CORS
 
     const response = await fetch(url.toString());
     if (!response.ok) return null;
 
     const data = await response.json();
-    if (!data.items) return null;
+    if (!data.query || !data.query.search || data.query.search.length === 0) return null;
 
-    return data.items.map(item => ({
+    return data.query.search.slice(0, 3).map(item => ({
       title:   item.title,
-      snippet: item.snippet,
-      link:    item.link,
+      // The API returns HTML snippets with <span class="searchmatch">, so we strip them
+      snippet: item.snippet.replace(/<[^>]*>?/gm, '') + '...',
+      link:    `https://en.wikipedia.org/wiki/${encodeURIComponent(item.title.replace(/ /g, '_'))}`,
     }));
   } catch (err) {
-    console.error('[Search] Google Search failed:', err.message);
+    console.error('[Search] Wikipedia Search failed:', err.message);
     return null;
   }
 }
@@ -72,25 +63,25 @@ async function googleSearch(query, apiKey, cx) {
  */
 function formatSearchResults(query, results) {
   if (!results || !results.length) {
-    return 'I searched the web but could not find relevant results. Try rephrasing your question.';
+    return 'I searched Wikipedia but could not find relevant results. Try rephrasing your question.';
   }
 
   // Extract the most relevant snippet
   const top = results[0];
   const extras = results.slice(1, 3);
 
-  let answer = `**Based on a web search for "${query}":**\n\n`;
+  let answer = `**Based on Wikipedia search for "${query}":**\n\n`;
   answer += `${top.snippet}\n\n`;
 
   if (extras.length) {
     answer += '**Also found:**\n';
     extras.forEach(r => {
-      answer += `- ${r.title}: ${r.snippet.slice(0, 120)}...\n`;
+      answer += `- **${r.title}**: ${r.snippet}\n`;
     });
   }
 
   answer += `\n**Sources:**\n`;
-  results.slice(0, 3).forEach(r => {
+  results.forEach(r => {
     answer += `- [${r.title}](${r.link})\n`;
   });
 
