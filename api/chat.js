@@ -5,13 +5,12 @@
 
 const { VisionAI } = require('../engine/ai-engine');
 
-// Engine is initialized per cold-start (BM25 indexing is fast ~5ms)
+// Engine is initialized per cold-start
 let _engine = null;
 function getEngine() {
   if (!_engine) {
     _engine = new VisionAI({
-      googleApiKey: process.env.GOOGLE_SEARCH_API_KEY,
-      googleCx:     process.env.GOOGLE_SEARCH_CX,
+      groqApiKey: process.env.GROQ_API_KEY
     });
   }
   return _engine;
